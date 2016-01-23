@@ -1,18 +1,6 @@
 /* 
 fork from https://www.hackster.io/bdub/spark-sumo-bot-1c36d1
-    D0 - PWMB (speed right)
-    A1 - BIN1 (direction bits)
-    A2 - BIN2
-    
-    A3 - STBY (motor enable)
-    
-    A4 - AIN1 (direction bits)
-    A5 - AIN2
-    D1 - PMWA (speed left)
 */
-
-// SYSTEM_MODE(AUTOMATIC);
-// SYSTEM_THREAD(ENABLED);
 
 #define STBY A3
 
@@ -114,7 +102,7 @@ IRSensor rightSensor(A7);
 
 void publish()
 {
-    // Particle.publish("left-middle-right", String(leftSensor.avg()) + "," + String(middleSensor.avg()) + "," + String(rightSensor.avg()));
+    Particle.publish("left-middle-right", String(leftSensor.avg()) + "," + String(middleSensor.avg()) + "," + String(rightSensor.avg()));
 }
 
 void readAll()
@@ -124,7 +112,7 @@ void readAll()
     rightSensor.read();
 }
 
-Timer publishTimer(2000, publish);
+Timer publishTimer(1000, publish);
 Timer readAllTimer(20, readAll);
 
 void setup() {
@@ -142,8 +130,6 @@ void setup() {
     left.Setup();
     right.Setup();
     
-    Particle.function("cmd",cmdRobot);
-    
     left.Forward(200);
     right.Forward(200);
     delay(100);
@@ -158,65 +144,22 @@ void stopMotors()
     right.Stop();
 }
 
-void loop(){ 
+void loop() 
+{ 
     
-    if (middleSensor.avg() > 1000 || (middleSensor.avg() < 1000 && leftSensor.avg() < 1000 && rightSensor.avg() < 1000)) {
-        left.Backward(240);
-        right.Backward(240);
-    } else if (leftSensor.avg() < 1000 || rightSensor.avg() > 1000) {
-        // left.Forward(240);
-        right.Backward(240);
-    } else if (rightSensor.avg() < 1000 || leftSensor.avg() > 1000) {
-        left.Backward(240);
-        // right.Forward(240);
+    int followingSpeed = 140;
+    int threshold = 300;
+    
+    if (rightSensor.avg() - leftSensor.avg() > threshold) {
+        left.Stop();
+        right.Backward(followingSpeed);
+    } else if (leftSensor.avg() - rightSensor.avg() > threshold) {
+        right.Stop();
+        left.Backward(followingSpeed);   
     } else {
-        left.Backward(240);
-        right.Backward(240);
+        left.Backward(followingSpeed);
+        right.Backward(followingSpeed);
     }
+    delay(5);
     
-    
-    
-    
-    
-    // if (_duration > 0) {
-    //     delay(5);
-    //     _duration = _duration - 5;
-    // } else {
-    //     stopMotors();
-    // }
-}
-
-int cmdRobot(String c) {
-    // c format: x,yyy,zzz,
-    // x = direction (f/b/l/r)
-    // y = speed in 0-255
-    // z = duration in milliseconds
-    //
-    // fblr, forward, backward, left turn, right turn
-    
-    char command = c.charAt(0);
-    String speedString = c.substring(2,c.indexOf(',',2));
-    int speed = speedString.toInt();
-    int duration = c.substring(2+speedString.length()+1).toInt();
-    
-    if (command == 'f') {
-        left.Forward(speed);
-        right.Forward(speed);
-    }
-    else if (command == 'b') {
-        left.Backward(speed);
-        right.Backward(speed);
-    }
-    else if (command == 'l') {
-        left.Forward(speed);
-        right.Backward(speed);
-    }
-    else if (command == 'r') {
-        left.Backward(speed);
-        right.Forward(speed);
-    }
-    
-    _duration = duration;
-    
-    return 0;
 }
